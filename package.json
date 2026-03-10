@@ -1,0 +1,27 @@
+{
+  "name": "harness",
+  "version": "1.0.0",
+  "description": "",
+  "main": "dist/index.js",
+  "type": "module",
+  "bin": {
+    "harness": "dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "start": "node dist/index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@letta-ai/letta-client": "^1.7.12",
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/node": "^25.4.0",
+    "better-sqlite3": "^12.6.2",
+    "langfuse": "^3.38.6",
+    "typescript": "^5.9.3"
+  }
+}
