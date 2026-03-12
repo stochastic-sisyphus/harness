@@ -11,7 +11,7 @@ import { LettaOrchestrator } from "./orchestrator.js"
 import { Validator } from "./validator.js"
 import { createAdapters } from "./adapters/index.js"
 import { generateBoot } from "./boot.js"
-import { validateCloseout, archiveCloseout } from "./closeout.js"
+import { validateCloseout, archiveCloseout, writeCloseoutTemplate } from "./closeout.js"
 
 const DB_DIR = join(homedir(), ".harness")
 const DB_PATH = join(DB_DIR, "harness.db")
@@ -473,6 +473,13 @@ async function cmdCloseout(projectDir?: string): Promise<void> {
   const { valid, errors } = await validateCloseout(dir)
 
   if (!valid) {
+    const missing = errors.some((e) => e.includes("not found"))
+    if (missing) {
+      const templatePath = await writeCloseoutTemplate(dir)
+      print(gumStyle(`Created closeout template at ${templatePath}`, { fg: C.green }))
+      print(gumStyle("Fill in proof, changes, and next steps, then re-run closeout.", { fg: C.muted }))
+      return
+    }
     print(gumStyle("Closeout validation failed:", { fg: C.red, bold: true }))
     for (const err of errors) {
       print(gumStyle(`  ${err}`, { fg: C.red }))
@@ -823,8 +830,8 @@ if (!command) {
       print(gumStyle("  harness status [id]    show task status", { fg: C.text }))
       print(gumStyle("  harness memory [scope] list memories", { fg: C.text }))
       print(gumStyle("  harness history <id>   show task event log", { fg: C.text }))
-      print(gumStyle("  harness boot [dir]      generate .harness/boot.md for project dir", { fg: C.text }))
-      print(gumStyle("  harness closeout [dir]   validate + archive .harness/closeout.md", { fg: C.text }))
+      print(gumStyle("  harness boot [dir]      generate .harness/boot.json for project dir", { fg: C.text }))
+      print(gumStyle("  harness closeout [dir]   validate + archive .harness/closeout.json", { fg: C.text }))
       break
 
     default:

@@ -22,6 +22,7 @@
     "@types/node": "^25.4.0",
     "better-sqlite3": "^12.6.2",
     "langfuse": "^3.38.6",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "zod": "^3.24.0"
   }
 }

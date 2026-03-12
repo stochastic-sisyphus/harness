@@ -1,6 +1,7 @@
 import { mkdir, readFile, readdir, writeFile } from "node:fs/promises"
 import { join, basename } from "node:path"
 import { homedir } from "node:os"
+import { BootArtifactSchema, type BootArtifact } from "./schemas.js"
 
 const DECISIONS_DIR = join(homedir(), ".claude", "decisions")
 
@@ -12,10 +13,27 @@ async function readFileSafe(filePath: string): Promise<string | null> {
   }
 }
 
-function extractTags(yaml: string): string[] {
-  const match = yaml.match(/^tags:\s*\[([^\]]*)\]/m)
-  if (!match?.[1]) return []
-  return match[1].split(",").map((t) => t.trim())
+function extractDecision(yaml: string): { id: string; title: string; status: string; tags: string[]; summary: string } | null {
+  const id = yaml.match(/^id:\s*(.+)$/m)?.[1]?.trim()
+  const title = yaml.match(/^title:\s*(.+)$/m)?.[1]?.trim()
+  if (!id || !title) return null
+
+  const status = yaml.match(/^status:\s*(.+)$/m)?.[1]?.trim() ?? "unknown"
+  const summary = yaml.match(/^summary:\s*(.+)$/m)?.[1]?.trim() ?? ""
+
+  // Parse tags from inline [a, b] or block form
+  const inlineTags = yaml.match(/^tags:\s*\[([^\]]*)\]/m)
+  let tags: string[] = []
+  if (inlineTags?.[1]) {
+    tags = inlineTags[1].split(",").map((t) => t.trim()).filter(Boolean)
+  } else {
+    const blockMatch = yaml.match(/^tags:\s*\n((?:\s+-\s+.+\n?)*)/m)
+    if (blockMatch?.[1]) {
+      tags = blockMatch[1].split("\n").map((l) => l.replace(/^\s+-\s+/, "").trim()).filter(Boolean)
+    }
+  }
+
+  return { id, title, status, tags, summary }
 }
 
 function extractOpenThreads(notes: string): string[] {
@@ -32,43 +50,35 @@ export async function generateBoot(projectDir: string): Promise<string> {
   await mkdir(harnessDir, { recursive: true })
 
   const sessionNotes = await readFileSafe(join(projectDir, ".claude-session-notes.md"))
-  const sessionSection = sessionNotes ?? "No prior session notes found."
 
-  let decisionSection = "No decisions recorded for this project."
+  const decisions: BootArtifact["decisions"] = []
   try {
     const files = await readdir(DECISIONS_DIR)
-    const matched: string[] = []
     for (const file of files.filter((f) => f.endsWith(".yaml") || f.endsWith(".yml"))) {
       const content = await readFileSafe(join(DECISIONS_DIR, file))
-      if (content && extractTags(content).includes(projectName)) {
-        matched.push(content.trim())
+      if (!content) continue
+      const decision = extractDecision(content)
+      if (decision && decision.tags.includes(projectName)) {
+        decisions.push(decision)
       }
     }
-    if (matched.length > 0) {
-      decisionSection = matched.join("\n\n---\n\n")
-    }
   } catch {
-    // DECISIONS_DIR missing — use default
+    // DECISIONS_DIR missing — skip
   }
 
-  const threads = sessionNotes ? extractOpenThreads(sessionNotes) : []
-  const threadsSection = threads.length > 0 ? threads.join("\n") : "No open threads found."
+  const openThreads = sessionNotes ? extractOpenThreads(sessionNotes) : []
 
-  const content = `# Boot Artifact
-Generated: ${new Date().toISOString()}
-Project: ${projectDir}
+  const artifact: BootArtifact = {
+    generated: new Date().toISOString(),
+    project: projectDir,
+    sessionContext: sessionNotes,
+    decisions,
+    openThreads,
+  }
 
-## Session Context
-${sessionSection}
+  BootArtifactSchema.parse(artifact)
 
-## Relevant Decisions
-${decisionSection}
-
-## Open Threads
-${threadsSection}
-`
-
-  const outPath = join(harnessDir, "boot.md")
-  await writeFile(outPath, content, "utf8")
+  const outPath = join(harnessDir, "boot.json")
+  await writeFile(outPath, JSON.stringify(artifact, null, 2), "utf8")
   return outPath
 }

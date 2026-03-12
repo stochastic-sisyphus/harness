@@ -1,0 +1,25 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Read",
+        "hooks": [{ "type": "command", "command": "~/.claude/hooks/track-reads.sh", "timeout": 3000 }]
+      },
+      {
+        "matcher": "Edit|Write",
+        "hooks": [{ "type": "command", "command": "~/.claude/hooks/convention-check.sh", "timeout": 3000 }]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [{ "type": "command", "command": "~/.claude/hooks/read-before-write.sh", "timeout": 3000 }]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [{ "type": "command", "command": "~/.claude/hooks/proof-gate.sh", "timeout": 60000 }]
+      }
+    ]
+  }
+}
