@@ -10,6 +10,8 @@ import { Supervisor } from "./supervisor.js"
 import { LettaOrchestrator } from "./orchestrator.js"
 import { Validator } from "./validator.js"
 import { createAdapters } from "./adapters/index.js"
+import { generateBoot } from "./boot.js"
+import { validateCloseout, archiveCloseout } from "./closeout.js"
 
 const DB_DIR = join(homedir(), ".harness")
 const DB_PATH = join(DB_DIR, "harness.db")
@@ -386,6 +388,22 @@ function screenViewMemories(): void {
   pressAnyKey()
 }
 
+async function screenBoot(): Promise<void> {
+  print(gumStyle("Generate Boot Artifact", { fg: C.accent1, bold: true }))
+  print("")
+  await cmdBoot()
+  print("")
+  pressAnyKey()
+}
+
+async function screenCloseout(): Promise<void> {
+  print(gumStyle("Validate Closeout", { fg: C.accent1, bold: true }))
+  print("")
+  await cmdCloseout().catch(() => {})
+  print("")
+  pressAnyKey()
+}
+
 function screenTaskHistory(): void {
   const db = getDb()
   try {
@@ -443,6 +461,30 @@ function screenTaskHistory(): void {
   }
 }
 
+async function cmdBoot(projectDir?: string): Promise<void> {
+  const dir = projectDir ?? process.cwd()
+  print(gumStyle(`Generating boot artifact for ${dir}...`, { fg: C.muted }))
+  const outPath = await generateBoot(dir)
+  print(gumStyle(`Boot artifact written to ${outPath}`, { fg: C.green, bold: true }))
+}
+
+async function cmdCloseout(projectDir?: string): Promise<void> {
+  const dir = projectDir ?? process.cwd()
+  const { valid, errors } = await validateCloseout(dir)
+
+  if (!valid) {
+    print(gumStyle("Closeout validation failed:", { fg: C.red, bold: true }))
+    for (const err of errors) {
+      print(gumStyle(`  ${err}`, { fg: C.red }))
+    }
+    process.exit(1)
+  }
+
+  print(gumStyle("Closeout valid.", { fg: C.green, bold: true }))
+  const archivePath = await archiveCloseout(dir)
+  print(gumStyle(`Archived to ${archivePath}`, { fg: C.muted }))
+}
+
 // ── Header banner ─────────────────────────────────────────
 
 function printBanner(): void {
@@ -465,6 +507,8 @@ const MENU_OPTIONS = [
   "View tasks",
   "View memories",
   "Task history",
+  "Generate boot artifact",
+  "Validate closeout",
   "Quit",
 ]
 
@@ -495,6 +539,12 @@ async function tui(): Promise<void> {
         break
       case "Task history":
         screenTaskHistory()
+        break
+      case "Generate boot artifact":
+        await screenBoot()
+        break
+      case "Validate closeout":
+        await screenCloseout()
         break
     }
 
@@ -747,6 +797,20 @@ if (!command) {
       break
     }
 
+    case "boot":
+      cmdBoot(args[1]).catch((err) => {
+        print(gumStyle(`Error: ${err instanceof Error ? err.message : String(err)}`, { fg: C.red }))
+        process.exit(1)
+      })
+      break
+
+    case "closeout":
+      cmdCloseout(args[1]).catch((err) => {
+        print(gumStyle(`Error: ${err instanceof Error ? err.message : String(err)}`, { fg: C.red }))
+        process.exit(1)
+      })
+      break
+
     case "--help":
     case "-h":
     case "help":
@@ -759,6 +823,8 @@ if (!command) {
       print(gumStyle("  harness status [id]    show task status", { fg: C.text }))
       print(gumStyle("  harness memory [scope] list memories", { fg: C.text }))
       print(gumStyle("  harness history <id>   show task event log", { fg: C.text }))
+      print(gumStyle("  harness boot [dir]      generate .harness/boot.md for project dir", { fg: C.text }))
+      print(gumStyle("  harness closeout [dir]   validate + archive .harness/closeout.md", { fg: C.text }))
       break
 
     default:
