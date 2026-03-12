@@ -11,12 +11,21 @@ STOP_ACTIVE=$(echo "$INPUT" | jq -r '.stop_hook_active // false')
 CWD=$(echo "$INPUT" | jq -r '.cwd // empty')
 [ -z "$CWD" ] && CWD="$PWD"
 
+# Try config.json first (new), then proof.json (legacy)
+CONFIG_PATH="${CWD}/.harness/config.json"
 PROOF_CONFIG="${CWD}/.harness/proof.json"
-[ ! -f "$PROOF_CONFIG" ] && exit 0
 
-TEST_CMD=$(jq -r '.testCmd // empty' "$PROOF_CONFIG")
-LINT_CMD=$(jq -r '.lintCmd // empty' "$PROOF_CONFIG")
-LINT_TARGET=$(jq -r '.lintTarget // empty' "$PROOF_CONFIG")
+if [ -f "$CONFIG_PATH" ]; then
+  TEST_CMD=$(jq -r '.execution.stopConditions.testCmd // empty' "$CONFIG_PATH")
+  LINT_CMD=$(jq -r '.execution.stopConditions.lintCmd // empty' "$CONFIG_PATH")
+  LINT_TARGET=$(jq -r '.execution.stopConditions.lintTarget // empty' "$CONFIG_PATH")
+elif [ -f "$PROOF_CONFIG" ]; then
+  TEST_CMD=$(jq -r '.testCmd // empty' "$PROOF_CONFIG")
+  LINT_CMD=$(jq -r '.lintCmd // empty' "$PROOF_CONFIG")
+  LINT_TARGET=$(jq -r '.lintTarget // empty' "$PROOF_CONFIG")
+else
+  exit 0
+fi
 
 cd "$CWD" || exit 0
 

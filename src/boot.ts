@@ -2,6 +2,7 @@ import { mkdir, readFile, readdir, writeFile } from "node:fs/promises"
 import { join, basename } from "node:path"
 import { homedir } from "node:os"
 import { BootArtifactSchema, type BootArtifact } from "./schemas.js"
+import { loadConfig } from "./config.js"
 
 const DECISIONS_DIR = join(homedir(), ".claude", "decisions")
 
@@ -49,7 +50,9 @@ export async function generateBoot(projectDir: string): Promise<string> {
   const harnessDir = join(projectDir, ".harness")
   await mkdir(harnessDir, { recursive: true })
 
-  const sessionNotes = await readFileSafe(join(projectDir, ".claude-session-notes.md"))
+  const config = await loadConfig(projectDir)
+  const sessionNotesFile = config.memory.sessionStateFile
+  const sessionNotes = await readFileSafe(join(projectDir, sessionNotesFile))
 
   const decisions: BootArtifact["decisions"] = []
   try {

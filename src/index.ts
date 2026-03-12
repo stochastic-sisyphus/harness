@@ -753,6 +753,13 @@ function cmdHistory(taskId: string): void {
   }
 }
 
+async function cmdConfig(projectDir?: string): Promise<void> {
+  const { loadConfig } = await import("./config.js")
+  const dir = projectDir ?? process.cwd()
+  const config = await loadConfig(dir)
+  print(JSON.stringify(config, null, 2))
+}
+
 // ── Main ──────────────────────────────────────────────────
 
 const args = process.argv.slice(2)
@@ -818,6 +825,13 @@ if (!command) {
       })
       break
 
+    case "config":
+      cmdConfig(args[1]).catch((err) => {
+        print(gumStyle(`Error: ${err instanceof Error ? err.message : String(err)}`, { fg: C.red }))
+        process.exit(1)
+      })
+      break
+
     case "--help":
     case "-h":
     case "help":
@@ -832,6 +846,7 @@ if (!command) {
       print(gumStyle("  harness history <id>   show task event log", { fg: C.text }))
       print(gumStyle("  harness boot [dir]      generate .harness/boot.json for project dir", { fg: C.text }))
       print(gumStyle("  harness closeout [dir]   validate + archive .harness/closeout.json", { fg: C.text }))
+      print(gumStyle("  harness config [dir]     show resolved config for project dir", { fg: C.text }))
       break
 
     default:
