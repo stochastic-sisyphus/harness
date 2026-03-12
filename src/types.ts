@@ -112,7 +112,7 @@ export type RunResult = {
 
 export type Task = {
   id: string
-  parentTaskId?: string
+  parentTaskId?: string | null
   title: string
   objective: string
   status: "queued" | "running" | "blocked" | "completed" | "failed"

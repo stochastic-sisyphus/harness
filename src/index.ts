@@ -220,6 +220,7 @@ async function screenRunTask(): Promise<void> {
 
     db.createTask({
       id: taskId,
+      parentTaskId: null,
       title: objective.slice(0, 80),
       objective,
       status: "queued",
@@ -571,6 +572,7 @@ async function cmdRun(objective: string): Promise<void> {
 
     db.createTask({
       id: taskId,
+      parentTaskId: null,
       title: objective.slice(0, 80),
       objective,
       status: "queued",
